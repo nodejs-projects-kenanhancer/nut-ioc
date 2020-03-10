@@ -1,0 +1,40 @@
+{
+  "name": "nut-ioc",
+  "version": "1.0.0",
+  "description": "a simple, lightweight and fast IoC Container Framework",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nodejs-projects-kenanhancer/nut-ioc.git"
+  },
+  "keywords": [
+    "JavaScript",
+    "node",
+    "nodejs",
+    "framework",
+    "IoC",
+    "IoC Container",
+    "Dependency Injection"
+  ],
+  "author": {
+    "email": "kenanhancer@gmail.com",
+    "name": "Kenan Hancer",
+    "url": "http://kenanhancer.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nodejs-projects-kenanhancer/nut-ioc/issues"
+  },
+  "homepage": "https://github.com/nodejs-projects-kenanhancer/nut-ioc#readme",
+  "engines": {
+    "node": ">=8.0.0",
+    "npm": ">=5.0.0"
+  },
+  "dependencies": {
+    "nut-pipe": "^1.0.9",
+    "yamljs": "^0.3.0"
+  }
+}
