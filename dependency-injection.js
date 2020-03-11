@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 const path = require('path');
 const {getAllMethods, getParamNames} = require('./helpers/function-helper');
 const {spreadObj} = require('./helpers/object-helper');
