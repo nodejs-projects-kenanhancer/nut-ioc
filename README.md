@@ -12,6 +12,12 @@ Developers can implement in their codes following OOP basics, principles, patter
 - Chain of Responsibility Pattern
 - Aspect Oriented Programming
 
+## Installing nut-ioc with npm
+
+```shell script
+npm i nut-ioc
+```
+
 ## Demo GitHub Repository
 
 You can find different usages of nut-ioc framework in separate brances.
