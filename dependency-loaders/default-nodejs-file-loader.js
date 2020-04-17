@@ -8,7 +8,14 @@ module.exports = ({filePath, nameProvider}) => {
     const fileExtension = path.extname(filePath);
 
     if (fileExtension === '.js') {
-        const requiredModule = require(filePath);
+
+        let requiredModule = undefined;
+        try {
+            requiredModule = require(filePath);
+        } catch (error) {
+            // console.error(`NUT.IOC ERROR: File can't be resolved ${filePath}`)
+            throw new Error(`NUT.IOC ERROR: File can't be resolved ${filePath}`);
+        }
 
         const {Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsDependency} = requiredModule;
 
