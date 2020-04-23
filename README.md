@@ -32,6 +32,7 @@ load-dependencies-with-different-loaders |
 load-dependencies-with-interceptors |
 load-dependencies-with-new-loaders-and-filters |
 load-dependencies-with-programatic-notation |
+nut-swagger-usage |
 
 ## Real life Example
 
