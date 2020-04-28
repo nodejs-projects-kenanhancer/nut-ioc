@@ -30,6 +30,7 @@ const loadDependencies = ({dependencyFullPath}) => {
         .filter(filePath => _dependencyFilters.every(depFilter => depFilter({
             filePath, ignoredDependencies: _ignoredDependencies
         })))
+        .sort()
         .map(file => {
             const filePath = path.join(dependencyFullPath, file);
 
