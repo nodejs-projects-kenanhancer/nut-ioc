@@ -17,7 +17,7 @@ module.exports = ({filePath, nameProvider}) => {
             throw new Error(`NUT.IOC ERROR: File can't be resolved ${filePath}`);
         }
 
-        const {Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsDependency} = requiredModule;
+        const {Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsHook} = requiredModule;
 
         const file = path.basename(filePath);
 
@@ -53,7 +53,7 @@ module.exports = ({filePath, nameProvider}) => {
             IsInterceptor: IsInterceptor || false,
             Interceptor,
             Extends,
-            IsDependency: IsDependency || ServiceDependencies.includes('dependencyContainer'),
+            IsHook: IsHook || ServiceDependencies.includes('dependencyContainer'),
             ServiceDependencies,
             File: file,
             FileExtension: fileExtension,

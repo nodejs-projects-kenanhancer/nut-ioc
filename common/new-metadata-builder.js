@@ -14,7 +14,7 @@ const buildMetadata =
          IsFolder = false,
          IsLoading = false,
          Loaded = false,
-         IsDependency = false
+         IsHook = false
      }) => ({
         ServiceName,
         Namespace,
@@ -30,7 +30,7 @@ const buildMetadata =
         Items,
         IsLoading,
         Loaded,
-        IsDependency
+        IsHook
     });
 
 module.exports = {buildMetadata};

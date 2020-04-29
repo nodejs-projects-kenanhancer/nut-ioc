@@ -548,7 +548,6 @@ paths:
       responses:
         '200':
           description: success
-
 ```
 
 **`swagger-definitions/greeting-definition-json.json`**
@@ -631,7 +630,6 @@ paths:
     }
   }
 }
-
 ```
 
 
@@ -967,6 +965,227 @@ const mainAsync = async () => {
     console.log();
 
     console.log('swaggerDefinitions:', swaggerDefinitions);
+};
+
+mainAsync();
+```
+
+### nut-ioc dependency hooks
+
+Assume that there is downstream swagger documents, and you need to update host field for every environment like dev, test, prod, etc.
+
+So, after all dependencies are constructed, you need to update **host** field of swagger definition, to do that you can define a hook service,
+and update any dependency.
+
+You just need to use **IsHook** feature in nut-ioc services as below **index.js** code.
+
+**`swagger-downstream-definitions/__metadata__.js`**
+```js
+module.exports = {
+    Namespace: "",
+    ServiceName: "", //fileName if empty,null or undefine
+    Service: ({ }) => {
+    }
+};
+```
+
+**`swagger-downstream-definitions/greeting-english-definition.yaml`**
+```yaml
+swagger: '2.0'
+info:
+  description: English Greeting API
+  version: 1.0.0
+  title: English Greeting API
+host: localhost:9090
+basePath: /greeting-english-api/v1
+schemes:
+  - http
+paths:
+  /sayHello:
+    get:
+      summary: Say English Hello Message
+      operationId: controllers.greetingEnglishService.sayHello
+      produces:
+        - application/json
+      parameters:
+        - name: firstName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person First Name.
+        - name: lastName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person Last Name.
+      responses:
+        '200':
+          description: success
+  /sayGoodbye:
+    get:
+      summary: Say English Goodbye Message
+      operationId: controllers.greetingEnglishService.sayGoodbye
+      produces:
+        - application/json
+      parameters:
+        - name: firstName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person First Name.
+        - name: lastName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person Last Name.
+      responses:
+        '200':
+          description: success
+```
+
+**`swagger-downstream-definitions/greeting-turkish-definition.yaml`**
+```yaml
+swagger: '2.0'
+info:
+  description: Turkish Greeting API
+  version: 1.0.0
+  title: Turkish Greeting API
+host: localhost:9090
+basePath: /greeting-turkish-api/v1
+schemes:
+  - http
+paths:
+  /sayHello:
+    get:
+      summary: Say Turkish Hello Message
+      operationId: controllers.greetingTurkishService.sayHello
+      produces:
+        - application/json
+      parameters:
+        - name: firstName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person First Name.
+        - name: lastName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person Last Name.
+      responses:
+        '200':
+          description: success
+  /sayGoodbye:
+    get:
+      summary: Say Turkish Goodbye Message
+      operationId: controllers.greetingTurkishService.sayGoodbye
+      produces:
+        - application/json
+      parameters:
+        - name: firstName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person First Name.
+        - name: lastName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person Last Name.
+      responses:
+        '200':
+          description: success
+```
+
+**`swagger-downstream-definitions/greeting-helper-definition.yaml`**
+```yaml
+swagger: '2.0'
+info:
+  description: Greeting Helper API
+  version: 1.0.0
+  title: Greeting Helper API
+host: localhost:9090
+basePath: /greeting-helper-api/v1
+schemes:
+  - http
+paths:
+  /getFullName:
+    get:
+      summary: Get Full Name
+      operationId: controllers.greetingHelperService.getFullName
+      produces:
+        - application/json
+      parameters:
+        - name: firstName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person First Name.
+        - name: lastName
+          in: header
+          type: string
+          maxLength: 100
+          required: true
+          description: Person Last Name.
+      responses:
+        '200':
+          description: success
+```
+
+**`.env`**
+```
+# Downstream-service(ds) urls
+ds.greetingEnglishDefinition.host="localhost:1080"
+ds.greetingTurkishDefinition.host="localhost:1080"
+ds.greetingHelperDefinition.host="localhost:1080"
+
+# Current-service(cs) urls
+cs.greetingDefinition.host="localhost:8080"
+cs.greetingDefinitionV2.host="localhost:8080"
+```
+
+**`index.js`**
+```js
+require('dotenv').config();
+
+const nutIoc = require('nut-ioc');
+
+const nutIocContainer = nutIoc();
+
+
+const mainAsync = async () => {
+
+    nutIocContainer.useDependency({
+        ServiceName: "appEnv",
+        Namespace: undefined,
+        Service: { ...process.env }
+    });
+
+    nutIocContainer.use({ dependencyPath: './swagger-downstream-definitions' });
+
+    nutIocContainer.useDependency({
+        IsHook: true,
+        ServiceName: "swaggerDownstreamDefinitionsUpdateHook",
+        Namespace: undefined,
+        Service: ({swaggerDownstreamDefinitions, appEnv}) => {
+
+            Object.entries(appEnv).filter(([key, value]) => key.includes('ds.')).forEach(([key, value]) => {
+                const [group, serviceName, fieldName] = key.split('.');
+
+                swaggerDownstreamDefinitions[serviceName][fieldName] = value;
+            });
+        }
+    });
+
 };
 
 mainAsync();
