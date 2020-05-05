@@ -11,18 +11,21 @@ let _dependencyLoaders;
 
 let configuration;
 
-const loadDependenciesInDirectory = ({dependencyFullPath}) => {
+const METADATA_FILE_NAME = '__metadata__';
+const METADATA_FILE = `${METADATA_FILE_NAME}.js`
+
+const loadDependenciesInDirectory = ({ dependencyFullPath }) => {
     const stat = fs.statSync(dependencyFullPath);
 
     if (stat.isDirectory()) {
 
-        const loadedDependencies = loadDependencies({dependencyFullPath});
+        const loadedDependencies = loadDependencies({ dependencyFullPath });
 
         return loadedDependencies;
     }
 };
 
-const loadDependencies = ({dependencyFullPath}) => {
+const loadDependencies = ({ dependencyFullPath }) => {
 
     let folderGroupingDependency;
 
@@ -30,11 +33,11 @@ const loadDependencies = ({dependencyFullPath}) => {
         .filter(filePath => _dependencyFilters.every(depFilter => depFilter({
             filePath, ignoredDependencies: _ignoredDependencies
         })))
-        .sort()
+        .sort((a, b) => a === METADATA_FILE ? -1 : 1)
         .map(file => {
             const filePath = path.join(dependencyFullPath, file);
 
-            const directoryModules = loadDependenciesInDirectory({dependencyFullPath: filePath});
+            const directoryModules = loadDependenciesInDirectory({ dependencyFullPath: filePath });
 
             if (directoryModules) {
                 return directoryModules;
@@ -42,7 +45,7 @@ const loadDependencies = ({dependencyFullPath}) => {
 
             for (const dependencyLoader of _dependencyLoaders) {
 
-                const loadedDependency = dependencyLoader({filePath, nameProvider: _nameProvider});
+                const loadedDependency = dependencyLoader({ filePath, nameProvider: _nameProvider });
 
                 if (loadedDependency) {
                     const keys = Object.keys(loadedDependency);
@@ -50,17 +53,17 @@ const loadDependencies = ({dependencyFullPath}) => {
                     if (keys.length > 0) {
                         const keyField = keys[0];
 
-                        loadedDependency[keyField]['__metadata__']['DependencyContainerName'] = _dependencyContainerName
+                        loadedDependency[keyField][METADATA_FILE_NAME]['DependencyContainerName'] = _dependencyContainerName
 
-                        const {Namespace, IsFolder} = loadedDependency[keyField]['__metadata__'];
+                        const { Namespace, IsFolder } = loadedDependency[keyField][METADATA_FILE_NAME];
 
                         if (IsFolder) {
                             folderGroupingDependency = loadedDependency;
                         } else if (folderGroupingDependency) {
                             const folderGroupingModuleName = Object.keys(folderGroupingDependency)[0];
-                            if (!Namespace || Namespace === folderGroupingDependency[folderGroupingModuleName]['__metadata__']['Namespace']) {
-                                loadedDependency[keyField]['__metadata__']['Namespace'] = folderGroupingModuleName;
-                                folderGroupingDependency[folderGroupingModuleName]['__metadata__']['Items'].push(keyField);
+                            if (!Namespace || Namespace === folderGroupingDependency[folderGroupingModuleName][METADATA_FILE_NAME]['Namespace']) {
+                                loadedDependency[keyField][METADATA_FILE_NAME]['Namespace'] = folderGroupingModuleName;
+                                folderGroupingDependency[folderGroupingModuleName][METADATA_FILE_NAME]['Items'].push(keyField);
                             }
                         }
                     }
@@ -83,10 +86,10 @@ const loadDependencies = ({dependencyFullPath}) => {
                 const existingDependency = accumulator[duplicatedDependencyName];
                 const duplicatedDependency = currentValue[duplicatedDependencyName];
 
-                throw new Error(`ERROR: While loading dependencies, there are duplicated file names as below. So, rename one of the files.\n${existingDependency.__metadata__.FilePath}\n${duplicatedDependency.__metadata__.FilePath}.`);
+                throw new Error(`ERROR: While loading dependencies, there are duplicated file names as below. So, rename one of the files.\n${existingDependency[METADATA_FILE_NAME].FilePath}\n${duplicatedDependency[METADATA_FILE_NAME].FilePath}.`);
             }
 
-            return {...accumulator, ...currentValue};
+            return { ...accumulator, ...currentValue };
         }, {});
 
     return loadedDependencies;
@@ -100,9 +103,9 @@ const loadConfiguration = () => {
         configuration.isLoaded = true;
     }
 
-    configuration.dependencyLoaders.forEach(depLoader => depLoader({loaders: dependencyLoaders}));
+    configuration.dependencyLoaders.forEach(depLoader => depLoader({ loaders: dependencyLoaders }));
 
-    configuration.dependencyFilters.forEach(depFilter => depFilter({filters: dependencyFilters}));
+    configuration.dependencyFilters.forEach(depFilter => depFilter({ filters: dependencyFilters }));
 
     _dependencyFilters = Object.values(dependencyFilters);
 
@@ -110,11 +113,11 @@ const loadConfiguration = () => {
 };
 
 
-const configureDependencyLoader = ({dependencyLoader}) => configuration.dependencyLoaders.push(dependencyLoader);
+const configureDependencyLoader = ({ dependencyLoader }) => configuration.dependencyLoaders.push(dependencyLoader);
 
-const configureDependencyFilter = ({dependencyFilter}) => configuration.dependencyFilters.push(dependencyFilter);
+const configureDependencyFilter = ({ dependencyFilter }) => configuration.dependencyFilters.push(dependencyFilter);
 
-const load = ({dependencyFullPath, dependencyContainerName, nameProvider, ignoredDependencies}) => {
+const load = ({ dependencyFullPath, dependencyContainerName, nameProvider, ignoredDependencies }) => {
 
     _dependencyContainerName = dependencyContainerName;
     _nameProvider = nameProvider;
@@ -122,7 +125,7 @@ const load = ({dependencyFullPath, dependencyContainerName, nameProvider, ignore
 
     loadConfiguration();
 
-    const loadedDependencies = loadDependencies({dependencyFullPath});
+    const loadedDependencies = loadDependencies({ dependencyFullPath });
 
     return loadedDependencies;
 };
@@ -135,7 +138,7 @@ module.exports = () => {
     _dependencyFilters = undefined;
     _dependencyLoaders = undefined;
 
-    configuration = {dependencyLoaders: [], dependencyFilters: [], isLoaded: false};
+    configuration = { dependencyLoaders: [], dependencyFilters: [], isLoaded: false };
 
-    return {configureDependencyLoader, configureDependencyFilter, load};
+    return { configureDependencyLoader, configureDependencyFilter, load };
 };
