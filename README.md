@@ -1,6 +1,10 @@
 # nut-ioc
 a simple, lightweight and fast IoC Container Framework
 
+## NPM link
+
+https://www.npmjs.com/package/nut-ioc
+
 nut-ioc injects dependencies run-time so that developers don't need to require modules.
 
 Developers can implement in their codes following OOP basics, principles, patterns and concepts and probably more than that :)

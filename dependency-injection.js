@@ -62,7 +62,7 @@ const wrapMethod = (obj, moduleName, interceptors) => {
     return newObject;
 };
 
-const loadServiceModules = async ({serviceModuleNames}) => {
+const loadServiceModules = async ({serviceModuleNames, enableInterceptor = true}) => {
 
     const result = {};
 
@@ -79,7 +79,7 @@ const loadServiceModules = async ({serviceModuleNames}) => {
 
                 if (!IsLoading && !Loaded) {
 
-                    await loadModule({serviceName: paramName});
+                    await loadModule({serviceName: paramName, enableInterceptor});
                 }
 
                 result[paramName] = services[paramName];
@@ -90,26 +90,26 @@ const loadServiceModules = async ({serviceModuleNames}) => {
     return Object.keys(result).length === 0 ? undefined : result;
 };
 
-const loadDependencyModulesOfFunction = async ({func}) => {
+const loadDependencyModulesOfFunction = async ({func, enableInterceptor=true}) => {
 
     const serviceModuleNames = getParamNames(func);
 
-    return await loadServiceModules({serviceModuleNames});
+    return await loadServiceModules({serviceModuleNames, enableInterceptor});
 };
 
-const loadDependencyModulesOfService = async ({serviceName}) => {
+const loadDependencyModulesOfService = async ({serviceName, enableInterceptor = true}) => {
 
     const serviceMetadata = servicesMetadata[serviceName];
 
     if (serviceMetadata && serviceMetadata.ServiceDependencies && serviceMetadata.ServiceDependencies.length > 0) {
-        await loadServiceModules({serviceModuleNames: serviceMetadata.ServiceDependencies});
+        await loadServiceModules({serviceModuleNames: serviceMetadata.ServiceDependencies, enableInterceptor});
     }
 };
 
-const loadModule = async ({serviceName}) => {
+const loadModule = async ({serviceName, enableInterceptor = true}) => {
     const {Namespace, IsFolder, Items, IsLoading, Loaded, IsInterceptor, DependencyContainerName, Extends, Interceptor, dep} = servicesMetadata[serviceName] || {};
     let {dependencies, interceptor} = dependencyContainerConfiguration[DependencyContainerName] || {};
-    interceptor = Interceptor || interceptor;
+    // interceptor = Interceptor || interceptor;
     const service = services[serviceName] || (dependencies && dependencies[serviceName]);
 
     if (!service) {
@@ -130,7 +130,7 @@ const loadModule = async ({serviceName}) => {
 
     servicesMetadata[serviceName].IsLoading = true;
     const extensionServices = await loadDependencyModulesOfFunction({func: Extends});
-    await loadDependencyModulesOfService({serviceName});
+    await loadDependencyModulesOfService({serviceName, enableInterceptor});
 
     let concreteService = undefined;
     try {
@@ -142,11 +142,11 @@ const loadModule = async ({serviceName}) => {
                 let svcNameFields = svcName.split('.');
 
                 if (svcNameFields.length === 3) {
-                    await loadServiceModules({serviceModuleNames: svcNameFields.slice(0, svcNameFields.length - 1)});
+                    await loadServiceModules({serviceModuleNames: svcNameFields.slice(0, svcNameFields.length - 1, enableInterceptor)});
                 } else if (svcNameFields.length === 2) {
-                    await loadServiceModules({serviceModuleNames: svcNameFields});
+                    await loadServiceModules({serviceModuleNames: svcNameFields, enableInterceptor});
                 } else {
-                    await loadModule({serviceName: svcName});
+                    await loadModule({serviceName: svcName, enableInterceptor});
                 }
 
                 return pickFieldValue(svcName)(services);
@@ -155,7 +155,7 @@ const loadModule = async ({serviceName}) => {
                 useDependency: async ({ServiceName, Namespace, Service, Interceptor}) => {
                     useDependency({ServiceName, Namespace, Service, Interceptor});
 
-                    await loadModule({serviceName: ServiceName});
+                    await loadModule({serviceName: ServiceName, enableInterceptor});
                 }
             }
         });
@@ -185,7 +185,7 @@ const loadModule = async ({serviceName}) => {
         services[Namespace] = {...services[Namespace], [serviceName]: concreteService};
         delete services[serviceName];
     } else if (IsFolder && Items) {
-        await loadServiceModules({serviceModuleNames: Items});
+        await loadServiceModules({serviceModuleNames: Items, enableInterceptor});
 
         for (const item of Items) {
             const itemService = services[item];
@@ -196,14 +196,20 @@ const loadModule = async ({serviceName}) => {
         }
     }
 
-    if (concreteService && interceptor && !IsInterceptor) {
-        await loadDependencyModulesOfFunction({func: interceptor});
-        const interceptorsArray = (interceptor && interceptor({
+    if (enableInterceptor && concreteService && (interceptor || Interceptor) && !IsInterceptor) {
+        if(interceptor){
+            await loadDependencyModulesOfFunction({func: interceptor});
+        }
+        else{
+            interceptor = Interceptor;
+        }
+
+        const interceptorsArray = (interceptor({
             serviceName, namespace: Namespace, ...services,
             dependencyProvider: async (svcNames) => {
 
                 for (const svcName of svcNames) {
-                    await loadModule({serviceName: svcName});
+                    await loadModule({serviceName: svcName, enableInterceptor});
                 }
 
                 return svcNames.map(svc => ({[svc]: services[svc]})).reduce((acc, current) => ({...acc, ...current}), {});
@@ -324,10 +330,14 @@ const build = async () => {
         servicesMetadata[dependency] = __metadata__;
     }
 
+    for(const {interceptor} of Object.values(dependencyContainerConfiguration)){
+        await loadDependencyModulesOfFunction({func: interceptor, enableInterceptor: false});
+    }
+
     for (const {ServiceName, Loaded} of Object.values(servicesMetadata).sort((a, b) => b.IsHook - a.IsHook)) {
 
         if (!Loaded) {
-            await loadModule({serviceName: ServiceName});
+            await loadModule({serviceName: ServiceName, enableInterceptor: true});
         }
     }
 
