@@ -14,7 +14,7 @@ module.exports = ({filePath, nameProvider}) => {
             requiredModule = require(filePath);
         } catch (error) {
             // console.error(`NUT.IOC ERROR: File can't be resolved ${filePath}`)
-            throw new Error(`NUT.IOC ERROR: File can't be resolved ${filePath}`);
+            throw new Error(`NUT.IOC ERROR: File can't be resolved ${filePath} Error: ${error}`);
         }
 
         const {Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsHook} = requiredModule;
