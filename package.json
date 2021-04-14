@@ -1,6 +1,6 @@
 {
   "name": "nut-ioc",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "a simple, lightweight and fast IoC Container Framework",
   "main": "index.js",
   "scripts": {
@@ -34,7 +34,7 @@
     "npm": ">=5.0.0"
   },
   "dependencies": {
-    "nut-pipe": "^1.1.1",
+    "nut-pipe": "^1.1.5",
     "yamljs": "^0.3.0"
   }
 }
