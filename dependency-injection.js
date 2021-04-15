@@ -182,7 +182,15 @@ const loadModule = async ({serviceName, enableInterceptor = true}) => {
     services[serviceName] = concreteService;
 
     if (Namespace && concreteService) {
-        services[Namespace] = {...services[Namespace], [serviceName]: concreteService};
+        const namespaceFields = Namespace.split('.');
+
+        const newNamespace = namespaceFields[0];
+
+        const reducedObj = namespaceFields.reduceRight((acc, cur) => ({ [cur]: acc }), { [serviceName]: concreteService });
+
+        Object.assign(reducedObj[newNamespace], services[newNamespace]);
+
+        services = { ...services, ...reducedObj };
         delete services[serviceName];
     } else if (IsFolder && Items) {
         await loadServiceModules({serviceModuleNames: Items, enableInterceptor});

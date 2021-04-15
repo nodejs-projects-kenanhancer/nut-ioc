@@ -55,14 +55,16 @@ const loadDependencies = ({ dependencyFullPath }) => {
 
                         loadedDependency[keyField][METADATA_FILE_NAME]['DependencyContainerName'] = _dependencyContainerName
 
-                        const { Namespace, IsFolder } = loadedDependency[keyField][METADATA_FILE_NAME];
+                        let { Namespace, IsFolder } = loadedDependency[keyField][METADATA_FILE_NAME];
 
                         if (IsFolder) {
                             folderGroupingDependency = loadedDependency;
                         } else if (folderGroupingDependency) {
                             const folderGroupingModuleName = Object.keys(folderGroupingDependency)[0];
-                            if (!Namespace || Namespace === folderGroupingDependency[folderGroupingModuleName][METADATA_FILE_NAME]['Namespace']) {
-                                loadedDependency[keyField][METADATA_FILE_NAME]['Namespace'] = folderGroupingModuleName;
+                            Namespace = folderGroupingDependency[folderGroupingModuleName][METADATA_FILE_NAME]['Namespace'];
+
+                            if (Namespace || folderGroupingModuleName) {
+                                loadedDependency[keyField][METADATA_FILE_NAME]['Namespace'] = Namespace || folderGroupingModuleName;
                                 folderGroupingDependency[folderGroupingModuleName][METADATA_FILE_NAME]['Items'].push(keyField);
                             }
                         }
