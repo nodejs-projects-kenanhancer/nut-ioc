@@ -197,12 +197,9 @@ const loadModule = async ({ serviceName, enableInterceptor = true }) => {
     }
 
     if (enableInterceptor && concreteService && (interceptor || Interceptor) && !IsInterceptor) {
-        if (interceptor) {
-            await loadDependencyModulesOfFunction({ func: interceptor });
-        }
-        else {
-            interceptor = Interceptor;
-        }
+        interceptor = interceptor || Interceptor;
+
+        await loadDependencyModulesOfFunction({ func: interceptor });
 
         const interceptorsArray = (interceptor({
             serviceName, namespace: Namespace, ...services,
