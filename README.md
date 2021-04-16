@@ -102,6 +102,38 @@ nut-ioc can use your node.js modules automatically. But, you need to export from
 
 No need to specify ServiceName and Namespace.
 
+But if you need to call your dependency as a nested object, then use the following notation in `Namespace` field.
+
+**`helper.js`**
+```js
+module.exports.ServiceName = ""; //fileName if empty,null or undefined
+module.exports.Namespace = "business.logic.helpers"; //if empty, then consume helper dependency with name directly
+module.exports.Service = ({
+    getFullName: ({ firstName, lastName }) => {
+        return `${firstName} ${lastName}`;
+    }
+});
+```
+
+now in order to use `helper` dependency in other dependency as below
+
+**`greeting-service.js`**
+```js
+module.exports.Service = ({ business: { logic: { helper } } }) =>
+    ({
+        sayHello: ({ firstName, lastName }) => {
+            const fullName = helper.getFullName({ firstName, lastName });
+
+            return `Hello ${fullName}`;
+        },
+        sayGoodbye: ({ firstName, lastName }) => {
+            const fullName = helper.getFullName({ firstName, lastName });
+
+            return `Goodbye, ${fullName}`;
+        }
+    });
+```
+
 you can consume helper.js node.js module with helper name. But, if you don't want to update fileName, then you can change serviceName in ServiceName field.
 
 if you want to export any object or function, then use Service field.
