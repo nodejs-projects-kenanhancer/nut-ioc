@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const dependencyLoaders = require('./dependency-loaders');
 const dependencyFilters = require('./dependency-filters');
+const { setFieldValue, pickFieldValue, nestedAssign } = require("nut-ioc/helpers/object-helper");
+const { METADATA_FILE_NAME, METADATA_FILE } = require('./common/constants');
 
 let _dependencyContainerName;
 let _nameProvider;
@@ -10,9 +12,6 @@ let _dependencyFilters;
 let _dependencyLoaders;
 
 let configuration;
-
-const METADATA_FILE_NAME = '__metadata__';
-const METADATA_FILE = `${METADATA_FILE_NAME}.js`
 
 const loadDependenciesInDirectory = ({ dependencyFullPath }) => {
     const stat = fs.statSync(dependencyFullPath);
@@ -45,7 +44,7 @@ const loadDependencies = ({ dependencyFullPath }) => {
 
             for (const dependencyLoader of _dependencyLoaders) {
 
-                const loadedDependency = dependencyLoader({ filePath, nameProvider: _nameProvider });
+                let loadedDependency = dependencyLoader({ filePath, nameProvider: _nameProvider });
 
                 if (loadedDependency) {
                     const keys = Object.keys(loadedDependency);
@@ -53,19 +52,36 @@ const loadDependencies = ({ dependencyFullPath }) => {
                     if (keys.length > 0) {
                         const keyField = keys[0];
 
-                        loadedDependency[keyField][METADATA_FILE_NAME]['DependencyContainerName'] = _dependencyContainerName
+                        const metadata = loadedDependency[keyField][METADATA_FILE_NAME];
 
-                        let { Namespace, IsFolder } = loadedDependency[keyField][METADATA_FILE_NAME];
+                        metadata['DependencyContainerName'] = _dependencyContainerName
+
+                        let { Namespace, IsFolder } = metadata;
+
+                        if (Namespace && Namespace !== keyField) {
+                            const newDependency = {};
+                            setFieldValue(Namespace)(newDependency, loadedDependency[keyField]);
+                            loadedDependency = newDependency;
+                        }
 
                         if (IsFolder) {
-                            folderGroupingDependency = loadedDependency;
+                            folderGroupingDependency = { Namespace, Dependency: loadedDependency };
                         } else if (folderGroupingDependency) {
-                            const folderGroupingModuleName = Object.keys(folderGroupingDependency)[0];
-                            Namespace = folderGroupingDependency[folderGroupingModuleName][METADATA_FILE_NAME]['Namespace'];
+                            const folderGroupingModuleName = Object.keys(folderGroupingDependency.Dependency)[0];
+                            Namespace = folderGroupingDependency.Namespace;
 
                             if (Namespace || folderGroupingModuleName) {
                                 loadedDependency[keyField][METADATA_FILE_NAME]['Namespace'] = Namespace || folderGroupingModuleName;
-                                folderGroupingDependency[folderGroupingModuleName][METADATA_FILE_NAME]['Items'].push(keyField);
+                                // folderGroupingDependency.Dependency[folderGroupingModuleName][METADATA_FILE_NAME]['Items'].push(keyField);
+
+                                if (!pickFieldValue(Namespace)(folderGroupingDependency.Dependency)[METADATA_FILE_NAME]['Items']) {
+                                    pickFieldValue(Namespace)(folderGroupingDependency.Dependency)[METADATA_FILE_NAME]['Items'] = {};
+                                }
+
+                                pickFieldValue(Namespace)(folderGroupingDependency.Dependency)[METADATA_FILE_NAME]['Items'][keyField] = loadedDependency[keyField][METADATA_FILE_NAME];
+                                setFieldValue(Namespace)(folderGroupingDependency.Dependency, loadedDependency, true);
+                                delete loadedDependency[keyField][METADATA_FILE_NAME];
+                                return undefined;
                             }
                         }
                     }
@@ -85,10 +101,9 @@ const loadDependencies = ({ dependencyFullPath }) => {
             const duplicatedDependencyName = Object.keys(currentValue).find(item => accumulator.hasOwnProperty(item));
 
             if (duplicatedDependencyName) {
-                const existingDependency = accumulator[duplicatedDependencyName];
-                const duplicatedDependency = currentValue[duplicatedDependencyName];
+                nestedAssign(accumulator, currentValue, [METADATA_FILE_NAME]);
 
-                throw new Error(`ERROR: While loading dependencies, there are duplicated file names as below. So, rename one of the files.\n${existingDependency[METADATA_FILE_NAME].FilePath}\n${duplicatedDependency[METADATA_FILE_NAME].FilePath}.`);
+                return accumulator;
             }
 
             return { ...accumulator, ...currentValue };
@@ -101,9 +116,8 @@ const loadConfiguration = () => {
 
     if (configuration.isLoaded) {
         return;
-    } else {
-        configuration.isLoaded = true;
     }
+    configuration.isLoaded = true;
 
     configuration.dependencyLoaders.forEach(depLoader => depLoader({ loaders: dependencyLoaders }));
 

@@ -1,10 +1,10 @@
 const path = require("path");
-const {capitalize} = require('../helpers/string-helper');
-const {buildMetadata} = require('../common/new-metadata-builder');
-const {getParamNames} = require('../helpers/function-helper');
+const { capitalize } = require('../helpers/string-helper');
+const { buildMetadata } = require('../common/new-metadata-builder');
+const { getParamNames } = require('../helpers/function-helper');
+const { METADATA_FILE_NAME, METADATA_FILE } = require('../common/constants');
 
-module.exports = ({filePath, nameProvider}) => {
-
+module.exports = ({ filePath, nameProvider }) => {
     const fileExtension = path.extname(filePath);
 
     if (fileExtension === '.js') {
@@ -17,7 +17,7 @@ module.exports = ({filePath, nameProvider}) => {
             throw new Error(`NUT.IOC ERROR: File can't be resolved ${filePath} Error: ${error}`);
         }
 
-        const {Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsHook} = requiredModule;
+        const { Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsHook } = requiredModule;
 
         const file = path.basename(filePath);
 
@@ -25,7 +25,7 @@ module.exports = ({filePath, nameProvider}) => {
         let namespace;
         let isFolder = false;
 
-        if (file === '__metadata__.js' || file === 'index.js') {
+        if (file === METADATA_FILE || file === 'index.js') {
             isFolder = true;
 
             const fileName = path.basename(path.dirname(filePath));
@@ -34,7 +34,7 @@ module.exports = ({filePath, nameProvider}) => {
 
             serviceName = nameProvider && nameProvider(serviceName) || serviceName;
 
-            namespace = file === '__metadata__.js' ? Namespace || capitalize(serviceName) : Namespace;
+            namespace = file === METADATA_FILE ? Namespace || capitalize(serviceName) : Namespace;
         } else {
             serviceName = capitalize(path.basename(file, fileExtension));
 
@@ -47,9 +47,11 @@ module.exports = ({filePath, nameProvider}) => {
 
         const ServiceDependencies = getParamNames(requiredModule.Service).filter(item => item !== serviceName);
 
-        requiredModule['__metadata__'] = buildMetadata({
+        requiredModule[METADATA_FILE_NAME] = buildMetadata({
             ServiceName: serviceName,
             Namespace: namespace,
+            Service,
+            ServiceInstance: undefined,
             IsInterceptor: IsInterceptor || false,
             Interceptor,
             Extends,
@@ -59,17 +61,17 @@ module.exports = ({filePath, nameProvider}) => {
             FileExtension: fileExtension,
             FilePath: filePath,
             IsFolder: isFolder,
-            IsLoading: false,
             Loaded: typeof (Service || requiredModule) === 'object'
         });
 
+        delete requiredModule['Service'];
         delete requiredModule['ServiceName'];
         delete requiredModule['Namespace'];
         delete requiredModule['Interceptor'];
         delete requiredModule['IsInterceptor'];
         delete requiredModule['Extends'];
 
-        return {[serviceName]: requiredModule};
+        return { [serviceName]: requiredModule };
     }
 
     return undefined;
