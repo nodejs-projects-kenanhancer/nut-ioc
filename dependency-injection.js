@@ -5,6 +5,7 @@ const { capitalize } = require('./helpers/string-helper');
 const { buildMetadata } = require('./common/new-metadata-builder');
 const { buildPipeline } = require('nut-pipe');
 let _dependencyLoader = require('./dependency-loader');
+const { METADATA_FILE_NAME } = require('./common/constants');
 
 let environment = {};
 
@@ -15,7 +16,6 @@ let servicesMetadata = {};
 let services = {};
 
 let rawServices = {};
-
 
 const wrapMethod = (obj, moduleName, interceptors) => {
     let allMethods = [];
@@ -68,69 +68,80 @@ const loadServiceModules = async ({ serviceModuleNames, enableInterceptor = true
 
     for (const paramName of serviceModuleNames) {
 
-        const service = services[paramName];
+        const serviceMetadata = servicesMetadata[paramName];
 
-        if (service) {
+        if (serviceMetadata) {
+            await loadSubServiceModules({ serviceMetadata, enableInterceptor });
 
-            const serviceMetadata = servicesMetadata[paramName];
-
-            if (serviceMetadata) {
-                const { IsLoading, Loaded } = serviceMetadata;
-
-                if (!IsLoading && !Loaded) {
-
-                    await loadModule({ serviceName: paramName, enableInterceptor });
-                }
-
-                result[paramName] = services[paramName];
-            }
+            result[paramName] = services[serviceMetadata.ServiceName];
         }
     }
 
     return Object.keys(result).length === 0 ? undefined : result;
 };
 
+const loadSubServiceModules = async ({ serviceMetadata, enableInterceptor = true }) => {
+    if (serviceMetadata) {
+        const { IsLoading, Loaded, ServiceName, ...restFields } = serviceMetadata;
+
+        if (IsLoading === undefined && IsLoading === undefined) {
+            for (const item of Object.keys(restFields)) {
+                await loadSubServiceModules({ serviceMetadata: serviceMetadata[item], enableInterceptor });
+            }
+        } else if (IsLoading === false && Loaded === false) {
+            await loadModule({ serviceName: serviceMetadata.ServiceName, serviceMetadata, enableInterceptor });
+
+            if (serviceMetadata.Items) {
+                for (const item of Object.keys(serviceMetadata.Items)) {
+                    await loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
+                }
+            }
+        }
+    } else {
+        for (const item of Object.keys(service)) {
+            await loadSubServiceModules({ serviceMetadata: service[item], enableInterceptor });
+        }
+
+    }
+};
+
 const loadDependencyModulesOfFunction = async ({ func, enableInterceptor = true }) => {
+
+    if (!func) {
+        return Promise.resolve(undefined);
+    }
 
     const serviceModuleNames = getParamNames(func);
 
     return await loadServiceModules({ serviceModuleNames, enableInterceptor });
 };
 
-const loadDependencyModulesOfService = async ({ serviceName, enableInterceptor = true }) => {
-
-    const serviceMetadata = servicesMetadata[serviceName];
+const loadDependencyModulesOfService = async ({ serviceMetadata, enableInterceptor = true }) => {
 
     if (serviceMetadata && serviceMetadata.ServiceDependencies && serviceMetadata.ServiceDependencies.length > 0) {
         await loadServiceModules({ serviceModuleNames: serviceMetadata.ServiceDependencies, enableInterceptor });
     }
 };
 
-const loadModule = async ({ serviceName, enableInterceptor = true }) => {
-    const { Namespace, IsFolder, Items, IsLoading, Loaded, IsInterceptor, DependencyContainerName, Extends, Interceptor, dep } = servicesMetadata[serviceName] || {};
+const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = true }) => {
+    serviceMetadata = serviceMetadata || (serviceName && servicesMetadata[serviceName]) || {};
+    const { Namespace, Service, IsFolder, Items, IsLoading, Loaded, IsInterceptor, DependencyContainerName, Extends, Interceptor, dep } = serviceMetadata;
     let { dependencies, interceptor } = dependencyContainerConfiguration[DependencyContainerName] || {};
-    // interceptor = Interceptor || interceptor;
-    const service = services[serviceName] || (dependencies && dependencies[serviceName]);
+    const service = Service || (dependencies && dependencies[serviceName]);
 
     if (!service) {
         return;
     }
 
-    if (typeof service === 'object') {
-        // if (servicesMetadata[serviceName]) {
-        //     servicesMetadata[serviceName].IsLoading = false;
-        //     servicesMetadata[serviceName].Loaded = true;
-        // }
-        //
-        // delete services[serviceName].Service;
-        // services[serviceName] = {...services[serviceName], ...service};
+    serviceMetadata.IsLoading = true;
+    serviceMetadata.Loaded = false;
+    let extensionServices = undefined;
 
-        return;
+    if (Extends) {
+        extensionServices = await loadDependencyModulesOfFunction({ func: Extends });
     }
 
-    servicesMetadata[serviceName].IsLoading = true;
-    const extensionServices = await loadDependencyModulesOfFunction({ func: Extends });
-    await loadDependencyModulesOfService({ serviceName, enableInterceptor });
+    await loadDependencyModulesOfService({ serviceMetadata, enableInterceptor });
 
     let concreteService = undefined;
     try {
@@ -159,6 +170,8 @@ const loadModule = async ({ serviceName, enableInterceptor = true }) => {
                 }
             }
         });
+
+        serviceMetadata.ServiceInstance = concreteService;
     } catch (error) {
         throw new Error(`NUT-IOC ERROR: ${serviceName} dependency cannot be constructed.  ` + error.toString());
     }
@@ -176,25 +189,18 @@ const loadModule = async ({ serviceName, enableInterceptor = true }) => {
         }
     }
 
-    servicesMetadata[serviceName].IsLoading = false;
-    servicesMetadata[serviceName].Loaded = true;
-
-    services[serviceName] = concreteService;
-
     if (Namespace && concreteService) {
         setFieldValue(Namespace)(services, { [serviceName]: concreteService }, true);
-        delete services[serviceName];
-    } else if (IsFolder && Items) {
-        await loadServiceModules({ serviceModuleNames: Items, enableInterceptor });
-
-        for (const item of Items) {
-            const itemService = services[item];
-            if (itemService) {
-                services[serviceName] = { ...services[serviceName], [item]: services[item] };
-                delete services[item];
-            }
-        }
+        // serviceMetadata.ServiceInstance = pickFieldValue(`${Namespace}.${serviceName}`)(services);
     }
+    else {
+        services[serviceName] = concreteService && { ...services[serviceName], ...concreteService } || services[serviceName];
+        serviceMetadata.ServiceInstance = services[serviceName];
+    }
+
+    serviceMetadata.IsLoading = false;
+    serviceMetadata.Loaded = true;
+
 
     if (enableInterceptor && concreteService && (interceptor || Interceptor) && !IsInterceptor) {
         interceptor = interceptor || Interceptor;
@@ -315,16 +321,9 @@ const build = async () => {
 
     for (const dependency in rawServices) {
 
-        const tempService = rawServices[dependency];
+        const rawService = rawServices[dependency];
 
-        const { Service = tempService, __metadata__ } = tempService;
-
-        delete tempService['__metadata__'];
-        delete tempService['Service'];
-
-        services[dependency] = Service;
-
-        servicesMetadata[dependency] = __metadata__;
+        moveMetadata({ serviceName: dependency, rawService });
     }
 
     for (const { interceptor } of Object.values(dependencyContainerConfiguration)) {
@@ -339,6 +338,22 @@ const build = async () => {
     }
 
     return services;
+};
+
+const moveMetadata = ({ serviceName, rawService }) => {
+    const { __metadata__, ...restFields } = rawService;
+
+    if (__metadata__) {
+        delete rawService[METADATA_FILE_NAME];
+
+        const fieldName = (__metadata__ && __metadata__.Namespace) || serviceName;
+
+        setFieldValue(fieldName)(services, restFields);
+
+        setFieldValue(fieldName)(servicesMetadata, __metadata__);
+    } else {
+        Object.keys(restFields).forEach(item => moveMetadata({ serviceName: item, rawService: restFields[item] }));
+    }
 };
 
 module.exports.createNewIocContainer = () => {

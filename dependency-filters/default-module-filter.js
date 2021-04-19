@@ -1,5 +1,4 @@
-module.exports = ({filePath, ignoredDependencies}) => {
-
+module.exports = ({ filePath, ignoredDependencies }) => {
     const result = !ignoredDependencies.some(ignore => {
         if (ignore.startsWith('*')) {
             return filePath.endsWith(ignore.substr(1, ignore.length - 1))
