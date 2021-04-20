@@ -195,7 +195,7 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
         delete services[serviceName];
     }
     else {
-        services[serviceName] = concreteService && { ...services[serviceName], ...concreteService } || services[serviceName];
+        services[serviceName] = (typeof concreteService === 'function' && concreteService) || (concreteService && { ...services[serviceName], ...concreteService }) || services[serviceName];
         serviceMetadata.ServiceInstance = services[serviceName];
     }
 
