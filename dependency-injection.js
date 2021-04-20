@@ -173,7 +173,7 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
 
         serviceMetadata.ServiceInstance = concreteService;
     } catch (error) {
-        throw new Error(`NUT-IOC ERROR: ${serviceName} dependency cannot be constructed.  ` + error.toString());
+        throw new Error(`NUT-IOC ERROR: ${Namespace}.${serviceName} dependency cannot be constructed.  ` + error.toString());
     }
 
     if (extensionServices) {
@@ -192,6 +192,7 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
     if (Namespace && concreteService) {
         setFieldValue(Namespace)(services, { [serviceName]: concreteService }, true);
         // serviceMetadata.ServiceInstance = pickFieldValue(`${Namespace}.${serviceName}`)(services);
+        delete services[serviceName];
     }
     else {
         services[serviceName] = concreteService && { ...services[serviceName], ...concreteService } || services[serviceName];
@@ -293,6 +294,7 @@ const useDependency = ({ ServiceName, Namespace, Service, Interceptor }) => {
     servicesMetadata[ServiceName] = buildMetadata({
         ServiceName,
         Namespace,
+        Service: typeof Service === 'function' && Service || undefined,
         Interceptor,
         ServiceDependencies
     });
