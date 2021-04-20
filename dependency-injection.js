@@ -221,7 +221,7 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
         })) || [];
 
         if (interceptorsArray.length > 0) {
-            concreteService = wrapMethod(concreteService, serviceName, namespace, interceptorsArray);
+            concreteService = wrapMethod(concreteService, serviceName, Namespace, interceptorsArray);
 
             if (Namespace) {
                 setFieldValue(Namespace)(services, { [serviceName]: concreteService }, true);
