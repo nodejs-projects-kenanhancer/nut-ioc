@@ -17,7 +17,7 @@ let services = {};
 
 let rawServices = {};
 
-const wrapMethod = (obj, moduleName, interceptors) => {
+const wrapMethod = (obj, moduleName, namespace, interceptors) => {
     let allMethods = [];
 
     const objType = typeof obj;
@@ -47,7 +47,7 @@ const wrapMethod = (obj, moduleName, interceptors) => {
 
         const wrapFunction = function () {
 
-            const result = pipelineInvoker({ method: concreteMethod, moduleName, args: arguments });
+            const result = pipelineInvoker({ method: concreteMethod, moduleName, namespace, args: arguments });
 
             return result;
         };
@@ -221,7 +221,7 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
         })) || [];
 
         if (interceptorsArray.length > 0) {
-            concreteService = wrapMethod(concreteService, serviceName, interceptorsArray);
+            concreteService = wrapMethod(concreteService, serviceName, namespace, interceptorsArray);
 
             if (Namespace) {
                 setFieldValue(Namespace)(services, { [serviceName]: concreteService }, true);
