@@ -328,6 +328,15 @@ const build = async () => {
         moveMetadata({ serviceName: dependency, rawService });
     }
 
+    for (const { ServiceName, Loaded, Service } of Object.values(servicesMetadata).filter((dependency) => dependency.IsHook)) {
+
+        await loadDependencyModulesOfFunction({ func: Service, enableInterceptor: false });
+
+        if (!Loaded) {
+            await loadModule({ serviceName: ServiceName, enableInterceptor: false });
+        }
+    }
+
     for (const { interceptor } of Object.values(dependencyContainerConfiguration)) {
         await loadDependencyModulesOfFunction({ func: interceptor, enableInterceptor: false });
     }
