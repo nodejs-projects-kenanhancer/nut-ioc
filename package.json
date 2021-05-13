@@ -1,6 +1,6 @@
 {
   "name": "nut-ioc",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "a simple, lightweight and fast IoC Container Framework",
   "main": "index.js",
   "scripts": {

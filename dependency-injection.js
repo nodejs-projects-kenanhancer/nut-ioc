@@ -96,13 +96,18 @@ const loadSubServiceModules = async ({ serviceMetadata, enableInterceptor = true
                     await loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
                 }
             }
+        } else if (serviceMetadata.Items) {
+            for (const item of Object.keys(serviceMetadata.Items)) {
+                await loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
+            }
         }
-    } else {
-        for (const item of Object.keys(service)) {
-            await loadSubServiceModules({ serviceMetadata: service[item], enableInterceptor });
-        }
+    } 
+    // else {
+    //     for (const item of Object.keys(service)) {
+    //         await loadSubServiceModules({ serviceMetadata: service[item], enableInterceptor });
+    //     }
 
-    }
+    // }
 };
 
 const loadDependencyModulesOfFunction = async ({ func, enableInterceptor = true }) => {
@@ -142,6 +147,8 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
     }
 
     await loadDependencyModulesOfService({ serviceMetadata, enableInterceptor });
+
+    await loadSubServiceModules({ serviceMetadata, enableInterceptor });
 
     let concreteService = undefined;
     try {
