@@ -84,7 +84,7 @@ const loadSubServiceModules = async ({ serviceMetadata, enableInterceptor = true
     if (serviceMetadata) {
         const { IsLoading, Loaded, ServiceName, ...restFields } = serviceMetadata;
 
-        if (IsLoading === undefined && IsLoading === undefined) {
+        if (IsLoading === undefined) {
             for (const item of Object.keys(restFields)) {
                 await loadSubServiceModules({ serviceMetadata: serviceMetadata[item], enableInterceptor });
             }
@@ -130,6 +130,11 @@ const loadDependencyModulesOfService = async ({ serviceMetadata, enableIntercept
 
 const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = true }) => {
     serviceMetadata = serviceMetadata || (serviceName && servicesMetadata[serviceName]) || {};
+
+    if(serviceMetadata.Loaded){
+        return;
+    }
+    
     const { Namespace, Service, IsFolder, Items, IsLoading, Loaded, IsInterceptor, DependencyContainerName, Extends, Interceptor, dep } = serviceMetadata;
     let { dependencies, interceptor } = dependencyContainerConfiguration[DependencyContainerName] || {};
     const service = Service || (dependencies && dependencies[serviceName]);
