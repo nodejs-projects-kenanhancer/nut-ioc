@@ -17,7 +17,7 @@ let services = {};
 
 let rawServices = {};
 
-const wrapMethod = (obj, moduleName, namespace, interceptors) => {
+const wrapMethodWithInterceptors = (obj, moduleName, namespace, interceptors) => {
     let allMethods = [];
 
     const objType = typeof obj;
@@ -101,7 +101,7 @@ const loadSubServiceModules = async ({ serviceMetadata, enableInterceptor = true
                 await loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
             }
         }
-    } 
+    }
     // else {
     //     for (const item of Object.keys(service)) {
     //         await loadSubServiceModules({ serviceMetadata: service[item], enableInterceptor });
@@ -131,10 +131,10 @@ const loadDependencyModulesOfService = async ({ serviceMetadata, enableIntercept
 const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = true }) => {
     serviceMetadata = serviceMetadata || (serviceName && servicesMetadata[serviceName]) || {};
 
-    if(serviceMetadata.Loaded){
+    if (serviceMetadata.Loaded) {
         return;
     }
-    
+
     const { Namespace, Service, IsFolder, Items, IsLoading, Loaded, IsInterceptor, DependencyContainerName, Extends, Interceptor, dep } = serviceMetadata;
     let { dependencies, interceptor } = dependencyContainerConfiguration[DependencyContainerName] || {};
     const service = Service || (dependencies && dependencies[serviceName]);
@@ -233,7 +233,7 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
         })) || [];
 
         if (interceptorsArray.length > 0) {
-            concreteService = wrapMethod(concreteService, serviceName, Namespace, interceptorsArray);
+            concreteService = wrapMethodWithInterceptors(concreteService, serviceName, Namespace, interceptorsArray);
 
             if (Namespace) {
                 setFieldValue(Namespace)(services, { [serviceName]: concreteService }, true);
