@@ -369,11 +369,23 @@ const moveMetadata = ({ serviceName, rawService }) => {
     if (__metadata__) {
         delete rawService[METADATA_FILE_NAME];
 
-        const fieldName = (__metadata__ && __metadata__.Namespace) || serviceName;
+        const { Namespace, Loaded, ServiceInstance } = __metadata__;
 
-        setFieldValue(fieldName)(services, restFields);
+        const fieldName = Namespace || serviceName;
 
         setFieldValue(fieldName)(servicesMetadata, __metadata__);
+
+        if (Loaded) {
+            if (Namespace) {
+                setFieldValue(fieldName)(services, { [serviceName]: ServiceInstance }, true);
+                delete services[serviceName];
+            }
+            else {
+                services[serviceName] = ServiceInstance;
+            }
+        } else {
+            setFieldValue(fieldName)(services, restFields);
+        }
     } else {
         Object.keys(restFields).forEach(item => moveMetadata({ serviceName: item, rawService: restFields[item] }));
     }
