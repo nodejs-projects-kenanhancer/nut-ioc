@@ -37,12 +37,7 @@ const wrapMethodWithInterceptors = (obj, moduleName, namespace, interceptors) =>
 
         const pipelineInvoker = buildPipeline([
             ...interceptors,
-            (context, services) => {
-
-                const result = concreteMethod.apply(this, [...context.args, services]);
-
-                return result;
-            }
+            concreteMethod
         ], {});
 
         const wrapFunction = function () {
@@ -62,7 +57,7 @@ const wrapMethodWithInterceptors = (obj, moduleName, namespace, interceptors) =>
     return newObject;
 };
 
-const loadServiceModules = async ({ serviceModuleNames, enableInterceptor = true }) => {
+const loadServiceModules = ({ serviceModuleNames, enableInterceptor = true }) => {
 
     const result = {};
 
@@ -71,7 +66,7 @@ const loadServiceModules = async ({ serviceModuleNames, enableInterceptor = true
         const serviceMetadata = servicesMetadata[paramName];
 
         if (serviceMetadata) {
-            await loadSubServiceModules({ serviceMetadata, enableInterceptor });
+            loadSubServiceModules({ serviceMetadata, enableInterceptor });
 
             result[paramName] = services[serviceMetadata.ServiceName];
         }
@@ -80,37 +75,37 @@ const loadServiceModules = async ({ serviceModuleNames, enableInterceptor = true
     return Object.keys(result).length === 0 ? undefined : result;
 };
 
-const loadSubServiceModules = async ({ serviceMetadata, enableInterceptor = true }) => {
+const loadSubServiceModules = ({ serviceMetadata, enableInterceptor = true }) => {
     if (serviceMetadata) {
         const { IsLoading, Loaded, ServiceName, ...restFields } = serviceMetadata;
 
         if (IsLoading === undefined) {
             for (const item of Object.keys(restFields)) {
-                await loadSubServiceModules({ serviceMetadata: serviceMetadata[item], enableInterceptor });
+                loadSubServiceModules({ serviceMetadata: serviceMetadata[item], enableInterceptor });
             }
         } else if (IsLoading === false && Loaded === false) {
-            await loadModule({ serviceName: serviceMetadata.ServiceName, serviceMetadata, enableInterceptor });
+            loadModule({ serviceName: serviceMetadata.ServiceName, serviceMetadata, enableInterceptor });
 
             if (serviceMetadata.Items) {
                 for (const item of Object.keys(serviceMetadata.Items)) {
-                    await loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
+                    loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
                 }
             }
         } else if (serviceMetadata.Items) {
             for (const item of Object.keys(serviceMetadata.Items)) {
-                await loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
+                loadSubServiceModules({ serviceMetadata: serviceMetadata.Items[item], enableInterceptor })
             }
         }
     }
     // else {
     //     for (const item of Object.keys(service)) {
-    //         await loadSubServiceModules({ serviceMetadata: service[item], enableInterceptor });
+    //          loadSubServiceModules({ serviceMetadata: service[item], enableInterceptor });
     //     }
 
     // }
 };
 
-const loadDependencyModulesOfFunction = async ({ func, enableInterceptor = true }) => {
+const loadDependencyModulesOfFunction = ({ func, enableInterceptor = true }) => {
 
     if (!func) {
         return Promise.resolve(undefined);
@@ -118,17 +113,17 @@ const loadDependencyModulesOfFunction = async ({ func, enableInterceptor = true 
 
     const serviceModuleNames = getParamNames(func);
 
-    return await loadServiceModules({ serviceModuleNames, enableInterceptor });
+    return loadServiceModules({ serviceModuleNames, enableInterceptor });
 };
 
-const loadDependencyModulesOfService = async ({ serviceMetadata, enableInterceptor = true }) => {
+const loadDependencyModulesOfService = ({ serviceMetadata, enableInterceptor = true }) => {
 
     if (serviceMetadata && serviceMetadata.ServiceDependencies && serviceMetadata.ServiceDependencies.length > 0) {
-        await loadServiceModules({ serviceModuleNames: serviceMetadata.ServiceDependencies, enableInterceptor });
+        loadServiceModules({ serviceModuleNames: serviceMetadata.ServiceDependencies, enableInterceptor });
     }
 };
 
-const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = true }) => {
+const loadModule = ({ serviceName, serviceMetadata, enableInterceptor = true }) => {
     serviceMetadata = serviceMetadata || (serviceName && servicesMetadata[serviceName]) || {};
 
     if (serviceMetadata.Loaded) {
@@ -148,37 +143,37 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
     let extensionServices = undefined;
 
     if (Extends) {
-        extensionServices = await loadDependencyModulesOfFunction({ func: Extends });
+        extensionServices = loadDependencyModulesOfFunction({ func: Extends });
     }
 
-    await loadDependencyModulesOfService({ serviceMetadata, enableInterceptor });
+    loadDependencyModulesOfService({ serviceMetadata, enableInterceptor });
 
-    await loadSubServiceModules({ serviceMetadata, enableInterceptor });
+    loadSubServiceModules({ serviceMetadata, enableInterceptor });
 
     let concreteService = undefined;
     try {
-        concreteService = await service({
+        concreteService = service({
             ...services,
             ...dependencies,
-            dependencyProvider: async (svcName) => {
+            dependencyProvider: (svcName) => {
 
                 let svcNameFields = svcName.split('.');
 
                 if (svcNameFields.length === 3) {
-                    await loadServiceModules({ serviceModuleNames: svcNameFields.slice(0, svcNameFields.length - 1, enableInterceptor) });
+                    loadServiceModules({ serviceModuleNames: svcNameFields.slice(0, svcNameFields.length - 1, enableInterceptor) });
                 } else if (svcNameFields.length === 2) {
-                    await loadServiceModules({ serviceModuleNames: svcNameFields, enableInterceptor });
+                    loadServiceModules({ serviceModuleNames: svcNameFields, enableInterceptor });
                 } else {
-                    await loadModule({ serviceName: svcName, enableInterceptor });
+                    loadModule({ serviceName: svcName, enableInterceptor });
                 }
 
                 return pickFieldValue(svcName)(services);
             },
             dependencyContainer: {
-                useDependency: async ({ ServiceName, Namespace, Service, Interceptor }) => {
+                useDependency: ({ ServiceName, Namespace, Service, Interceptor }) => {
                     useDependency({ ServiceName, Namespace, Service, Interceptor });
 
-                    await loadModule({ serviceName: ServiceName, enableInterceptor });
+                    loadModule({ serviceName: ServiceName, enableInterceptor });
                 }
             }
         });
@@ -218,14 +213,14 @@ const loadModule = async ({ serviceName, serviceMetadata, enableInterceptor = tr
     if (enableInterceptor && concreteService && (interceptor || Interceptor) && !IsInterceptor) {
         interceptor = interceptor || Interceptor;
 
-        await loadDependencyModulesOfFunction({ func: interceptor });
+        loadDependencyModulesOfFunction({ func: interceptor });
 
         const interceptorsArray = (interceptor({
             serviceName, namespace: Namespace, ...services,
-            dependencyProvider: async (svcNames) => {
+            dependencyProvider: (svcNames) => {
 
                 for (const svcName of svcNames) {
-                    await loadModule({ serviceName: svcName, enableInterceptor });
+                    loadModule({ serviceName: svcName, enableInterceptor });
                 }
 
                 return svcNames.map(svc => ({ [svc]: services[svc] })).reduce((acc, current) => ({ ...acc, ...current }), {});
@@ -328,7 +323,7 @@ const use = ({ dependencyPath, nameProvider, ignoredDependencies = [], dependenc
     };
 };
 
-const build = async () => {
+const build = () => {
     const loadedDependencies = loadDependencies({ dependencyContainerConfiguration });
 
     rawServices = spreadObj(loadedDependencies);
@@ -342,21 +337,21 @@ const build = async () => {
 
     for (const { ServiceName, Loaded, Service } of Object.values(servicesMetadata).filter((dependency) => dependency.IsHook)) {
 
-        await loadDependencyModulesOfFunction({ func: Service, enableInterceptor: false });
+        loadDependencyModulesOfFunction({ func: Service, enableInterceptor: false });
 
         if (!Loaded) {
-            await loadModule({ serviceName: ServiceName, enableInterceptor: false });
+            loadModule({ serviceName: ServiceName, enableInterceptor: false });
         }
     }
 
     for (const { interceptor } of Object.values(dependencyContainerConfiguration)) {
-        await loadDependencyModulesOfFunction({ func: interceptor, enableInterceptor: false });
+        loadDependencyModulesOfFunction({ func: interceptor, enableInterceptor: false });
     }
 
     for (const { ServiceName, Loaded } of Object.values(servicesMetadata).sort((a, b) => b.IsHook - a.IsHook)) {
 
         if (!Loaded) {
-            await loadModule({ serviceName: ServiceName, enableInterceptor: true });
+            loadModule({ serviceName: ServiceName, enableInterceptor: true });
         }
     }
 
