@@ -37,7 +37,12 @@ const wrapMethodWithInterceptors = (obj, moduleName, namespace, interceptors) =>
 
         const pipelineInvoker = buildPipeline([
             ...interceptors,
-            concreteMethod
+            (context, services) => {
+
+                const result = concreteMethod.apply(this, [...context.args, services]);
+
+                return result;
+            }
         ], {});
 
         const wrapFunction = function () {
