@@ -1,7 +1,7 @@
 const path = require('path');
 const { getAllMethods, getParamNames } = require('./helpers/function-helper');
 const { spreadObj, pickFieldValue, setFieldValue } = require('./helpers/object-helper');
-const { capitalize } = require('./helpers/string-helper');
+const { capitalize, join } = require('./helpers/string-helper');
 const { buildMetadata } = require('./common/new-metadata-builder');
 const { buildPipeline } = require('nut-pipe');
 let _dependencyLoader = require('./dependency-loader');
@@ -47,7 +47,9 @@ const wrapMethodWithInterceptors = (obj, moduleName, namespace, interceptors) =>
 
         const wrapFunction = function () {
 
-            const result = pipelineInvoker({ method: concreteMethod, moduleName, namespace, args: arguments });
+            const fullQualifiedName = join(namespace, moduleName, method.name)
+
+            const result = pipelineInvoker({ method: concreteMethod, moduleName, namespace, fullQualifiedName, args: arguments });
 
             return result;
         };
