@@ -185,7 +185,7 @@ const createNewIocContainer = ({ environment = {}, dependencyContainerConfigurat
 
             serviceMetadata.ServiceInstance = concreteService;
         } catch (error) {
-            throw new Error(`NUT-IOC ERROR: ${Namespace}.${serviceName} dependency cannot be constructed.  ` + error.toString());
+            throw new Error(`NUT-IOC ERROR: ${Namespace}.${serviceName} dependency cannot be constructed. ${error.message} ${error.stack}`);
         }
 
         if (extensionServices) {
