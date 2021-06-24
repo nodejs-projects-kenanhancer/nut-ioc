@@ -47,11 +47,13 @@ module.exports = ({ filePath, nameProvider }) => {
 
         const ServiceDependencies = getParamNames(requiredModule.Service).filter(item => item !== serviceName);
 
+        const loaded = typeof (Service || requiredModule) === 'object';
+
         requiredModule[METADATA_FILE_NAME] = buildMetadata({
             ServiceName: serviceName,
             Namespace: namespace,
             Service,
-            ServiceInstance: undefined,
+            ServiceInstance: loaded && requiredModule.Service,
             IsInterceptor: IsInterceptor || false,
             Interceptor,
             Extends,
@@ -61,7 +63,7 @@ module.exports = ({ filePath, nameProvider }) => {
             FileExtension: fileExtension,
             FilePath: filePath,
             IsFolder: isFolder,
-            Loaded: typeof (Service || requiredModule) === 'object'
+            Loaded: loaded
         });
 
         delete requiredModule['Service'];
