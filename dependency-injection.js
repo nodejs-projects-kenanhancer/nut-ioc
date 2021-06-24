@@ -30,8 +30,8 @@ const createNewIocContainer = ({ environment = {}, dependencyContainerConfigurat
             const isFunction = typeof method === 'function';
 
             const concreteMethod = isFunction ? method : obj[method];
-            
-            const methodName = isFunction? method.name : method;
+
+            const methodName = isFunction ? method.name : method;
 
             const pipelineInvoker = buildPipeline([
                 ...interceptors,
