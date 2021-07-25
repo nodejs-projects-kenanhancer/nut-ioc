@@ -11,13 +11,21 @@ module.exports = ({ filePath, nameProvider }) => {
 
         let requiredModule = undefined;
         try {
-            requiredModule = require(filePath);
+            const newModule = require(filePath);
+
+            requiredModule = newModule
+
+            delete require.cache[filePath];
         } catch (error) {
             // console.error(`NUT.IOC ERROR: File can't be resolved ${filePath}`)
             throw new Error(`NUT.IOC ERROR: File can't be resolved ${filePath} Error: ${error}`);
         }
 
-        const { Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsHook } = requiredModule;
+        const { Service, ServiceName, Namespace, IsInterceptor, Extends, Interceptor, IsHook, __esModule, ...rest } = requiredModule;
+
+        if (__esModule && !rest.default) {
+            return undefined;
+        }
 
         const file = path.basename(filePath);
 
@@ -45,14 +53,16 @@ module.exports = ({ filePath, nameProvider }) => {
             namespace = Namespace;
         }
 
-        const ServiceDependencies = getParamNames(requiredModule.Service).filter(item => item !== serviceName);
+        const constructorFunc = Service || (__esModule && rest.default);
 
-        const loaded = typeof (Service || requiredModule) === 'object';
+        const ServiceDependencies = getParamNames(constructorFunc).filter(item => item !== serviceName);
+
+        const loaded = !__esModule && typeof (Service || requiredModule) === 'object';
 
         requiredModule[METADATA_FILE_NAME] = buildMetadata({
             ServiceName: serviceName,
             Namespace: namespace,
-            Service,
+            Service: constructorFunc,
             ServiceInstance: loaded && requiredModule.Service,
             IsInterceptor: IsInterceptor || false,
             Interceptor,
@@ -66,12 +76,15 @@ module.exports = ({ filePath, nameProvider }) => {
             Loaded: loaded
         });
 
+        delete requiredModule['default'];
+        delete requiredModule['__esModule'];
         delete requiredModule['Service'];
         delete requiredModule['ServiceName'];
         delete requiredModule['Namespace'];
         delete requiredModule['Interceptor'];
         delete requiredModule['IsInterceptor'];
         delete requiredModule['Extends'];
+        delete requiredModule['IsHook'];
 
         return { [serviceName]: requiredModule };
     }

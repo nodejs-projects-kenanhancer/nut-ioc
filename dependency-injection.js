@@ -1,6 +1,6 @@
 const path = require('path');
 const { getAllMethods, getParamNames } = require('./helpers/function-helper');
-const { spreadObj, pickFieldValue, setFieldValue } = require('./helpers/object-helper');
+const { spreadObj, pickFieldValue, setFieldValue, isConstructor } = require('./helpers/object-helper');
 const { capitalize, join } = require('./helpers/string-helper');
 const { buildMetadata } = require('./common/new-metadata-builder');
 const { buildPipeline } = require('nut-pipe');
@@ -157,7 +157,8 @@ const createNewIocContainer = ({ environment = {}, dependencyContainerConfigurat
 
         let concreteService = undefined;
         try {
-            concreteService = await service({
+
+            let constructorParameters = {
                 ...services,
                 ...dependencies,
                 dependencyProvider: async (svcName) => {
@@ -181,7 +182,17 @@ const createNewIocContainer = ({ environment = {}, dependencyContainerConfigurat
                         await loadModule({ serviceName: ServiceName, enableInterceptor });
                     }
                 }
-            });
+            };
+
+            const checkConstructor = isConstructor(service);
+
+            if (checkConstructor) {
+                const entries = Object.entries(constructorParameters);
+                constructorParameters = serviceMetadata.ServiceDependencies.map(item => entries.find(([key, value]) => key === item)).map(([item, value]) => value);
+                concreteService = new service(...constructorParameters);
+            } else {
+                concreteService = await service(constructorParameters);
+            }
 
             serviceMetadata.ServiceInstance = concreteService;
         } catch (error) {
@@ -207,7 +218,7 @@ const createNewIocContainer = ({ environment = {}, dependencyContainerConfigurat
             delete services[serviceName];
         }
         else {
-            services[serviceName] = (typeof concreteService === 'function' && concreteService) || (concreteService && { ...services[serviceName], ...concreteService }) || services[serviceName];
+            services[serviceName] = (typeof concreteService === 'function' && concreteService) || (concreteService && { ...services[serviceName], ...concreteService, ...concreteService.__proto__ }) || services[serviceName];
             serviceMetadata.ServiceInstance = services[serviceName];
         }
 

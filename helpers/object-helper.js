@@ -35,6 +35,13 @@ const objectHelper = {
             }
         });
         return target;
+    },
+    isConstructor: (func) => {
+        const { prototype } = func || {};
+        return prototype && Boolean(prototype) && Boolean(prototype.constructor) || false;
+    },
+    isEmpty: (obj) => {
+        return !obj || Object.keys(obj).length === 0;
     }
 };
 
