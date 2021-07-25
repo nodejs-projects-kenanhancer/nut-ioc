@@ -22,11 +22,18 @@ Developers can implement in their codes following OOP basics, principles, patter
 npm i nut-ioc
 ```
 
-## Demo GitHub Repository
+## Demo GitHub Repository for TypeScript
 
-You can find different usages of nut-ioc framework in separate brances.
+README file is inside the following repository.
 
-https://github.com/nodejs-projects-kenanhancer/nut-ioc-basic-demo.git
+[https://github.com/nodejs-projects-kenanhancer/nut-ioc-typescript-simple-demo](https://github.com/nodejs-projects-kenanhancer/nut-ioc-typescript-simple-demo)
+
+
+## Demo GitHub Repository for CommonJS
+
+You can find different usages of nut-ioc framework in separate branchs.
+
+[https://github.com/nodejs-projects-kenanhancer/nut-ioc-basic-demo.git](https://github.com/nodejs-projects-kenanhancer/nut-ioc-basic-demo.git)
 
 Branch list |
 ------------------------------------------------------ |
